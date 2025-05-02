@@ -8,6 +8,7 @@ import time
 class Cell:
     grid = []
     def __init__(self, x, y, rect, state: CellState):
+        self.neighbors = 0
         self.x = y
         self.y = x
         self.state = state
@@ -17,6 +18,7 @@ class Cell:
     def __str__(self):
         return str(self.state.value)
 
+        
     def count_neighbors(self):
         global map
         
@@ -73,7 +75,7 @@ delta_time = 0.1
 def print_grid(grid):
     for row in grid:
         for el in row:
-            print(el, sep="", end="")
+            print(f'{el}:{el.count_neighbors()}', sep="", end="")
         print()
 
 def flip_state(cell):
@@ -142,6 +144,7 @@ def run_game():
                 running = False
             if event.type == pygame.KEYDOWN:
                 game_of_life = not game_of_life
+
         while game_of_life:
             for row in Cell.grid:
                 for el in row:
@@ -156,10 +159,12 @@ def run_game():
                         print(f"coordinates: {el.x}, {el.y} overpopulation")
                     elif el.state == CellState.DEAD and el.state == CellState.DEAD and el.count_neighbors()==3:
                         el.__setattr__("state", CellState.ALIVE)
-                        print(f"coordinates: {el.x}, {el.y} reproduction")    
+                        print(f"coordinates: {el.x}, {el.y} reproduction")
+                    else:
+                        print(f"coordinates: {el.x}, {el.y} no change")
             map = deepcopy(Cell.grid)
             print_grid(map)
-            time.sleep(0.1)
+            time.sleep(1)
 
         delta_time = clock.tick(60) / 1000.0
         delta_time = max(0.001, min(delta_time, 0.1))
