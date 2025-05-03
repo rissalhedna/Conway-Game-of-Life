@@ -112,20 +112,16 @@ def run_conway():
             for el in row:
                 if el.state == CellState.ALIVE and el.count_neighbors() < 2:
                     el.__setattr__("state", CellState.DEAD)
-                    print("Underpopulation")
                 elif el.state == CellState.ALIVE and el.count_neighbors() in [2,3]:
                     el.__setattr__("state", CellState.ALIVE)
-                    print("Alive")
                 elif el.state == CellState.ALIVE and el.count_neighbors() > 3:
                     el.__setattr__("state", CellState.DEAD)
-                    print("Overpopulation")
                 elif el.state == CellState.DEAD and el.state == CellState.DEAD and el.count_neighbors()==3:
                     el.__setattr__("state", CellState.ALIVE)
-                    print("Reproduction")
         global map
         map = deepcopy(Cell.grid)
         print_grid(map)
         time.sleep(0.1)
         call("clear")
 
-# run_conway()
+run_conway()

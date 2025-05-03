@@ -18,6 +18,13 @@ class Cell:
     def __str__(self):
         return str(self.state.value)
 
+    def __setattr__(self, name, value):
+        if name == "state":
+            if value == CellState.ALIVE:
+                colors[self.x][self.y] = (255, 255, 255)
+            else:
+                colors[self.x][self.y] = (0, 0, 0)
+        super().__setattr__(name, value)
         
     def count_neighbors(self):
         global map
@@ -65,9 +72,6 @@ class Cell:
         return neighbors
     
 pygame.init()
-separation = 1
-size = 50
-color = (255, 255, 255)
 
 clock = pygame.time.Clock()
 delta_time = 0.1
@@ -81,7 +85,6 @@ def print_grid(grid):
 def flip_state(cell):
     global map
     global colors
-
     if cell.state == CellState.ALIVE:
         cell.state = CellState.DEAD
         colors[cell.x][cell.y] = (0, 0, 0)
@@ -111,8 +114,9 @@ def create_grid(width, height, cell_size, separation):
             x = i * (cell_size + separation)
             y = j * (cell_size + separation)
             rect = pygame.Rect(x, y, size, size)
-            colors[j][i] = (0, 0, 0)
             map[j][i] = deepcopy(Cell(i, j, rect, CellState.DEAD))
+            if i == 1 and j in [0, 1, 2]:
+                map[j][i] = deepcopy(Cell(i, j, rect, CellState.ALIVE))
 
     print_grid(Cell.grid)
 
@@ -121,8 +125,11 @@ def create_grid(width, height, cell_size, separation):
 def run_game():
     global map
     global colors
-    width = 3
-    height = 3
+    width = 100
+    height = 100
+    size = 5
+    separation = 1
+
     game_of_life = False
     create_grid(width, height, size, separation)
     
@@ -138,33 +145,31 @@ def run_game():
             j = pos[1] // (size + separation)
             flip_state(map[j][i])
             print_grid(map)
-
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
                 game_of_life = not game_of_life
 
-        while game_of_life:
+        if game_of_life:
+            Cell.grid = deepcopy(map)
             for row in Cell.grid:
                 for el in row:
                     if el.state == CellState.ALIVE and el.count_neighbors() < 2:
-                        el.__setattr__("state", CellState.DEAD)
+                        flip_state(el)
                         print(f"coordinates: {el.x}, {el.y} underpopulation")
                     elif el.state == CellState.ALIVE and el.count_neighbors() in [2,3]:
-                        el.__setattr__("state", CellState.ALIVE)
                         print(f"coordinates: {el.x}, {el.y} alive")
                     elif el.state == CellState.ALIVE and el.count_neighbors() > 3:
-                        el.__setattr__("state", CellState.DEAD)
+                        flip_state(el)
                         print(f"coordinates: {el.x}, {el.y} overpopulation")
                     elif el.state == CellState.DEAD and el.state == CellState.DEAD and el.count_neighbors()==3:
-                        el.__setattr__("state", CellState.ALIVE)
+                        flip_state(el)   
                         print(f"coordinates: {el.x}, {el.y} reproduction")
-                    else:
-                        print(f"coordinates: {el.x}, {el.y} no change")
             map = deepcopy(Cell.grid)
+            time.sleep(0.1)
             print_grid(map)
-            time.sleep(1)
 
         delta_time = clock.tick(60) / 1000.0
         delta_time = max(0.001, min(delta_time, 0.1))
