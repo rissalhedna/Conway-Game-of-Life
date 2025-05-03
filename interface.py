@@ -3,7 +3,10 @@ from main import CellState
 from copy import deepcopy
 import subprocess
 import time
-
+width = 100
+height = 100
+size = 20
+separation = 5
 
 class Cell:
     grid = []
@@ -120,15 +123,9 @@ def create_grid(width, height, cell_size, separation):
 
     print_grid(Cell.grid)
 
-
-
 def run_game():
     global map
     global colors
-    width = 100
-    height = 100
-    size = 5
-    separation = 1
 
     game_of_life = False
     create_grid(width, height, size, separation)
