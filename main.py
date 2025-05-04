@@ -3,7 +3,7 @@ from copy import deepcopy
 from subprocess import call
 import time
 
-# TODO: 1. Add a function to generate grids of different sizes
+# TODO: 1. Add a function to generate grids of different sizes 
 # 2. Visualize the grid in a more user-friendly way
 # 3. Allow the user to interact with the grid before it starts
 # 4. Allow a user to set the speed of the simulation
@@ -124,4 +124,5 @@ def run_conway():
         time.sleep(0.1)
         call("clear")
 
-run_conway()
+if __name__ == "__main__":
+    run_conway()

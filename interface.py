@@ -1,12 +1,12 @@
 import pygame
 from main import CellState
 from copy import deepcopy
-import subprocess
 import time
-width = 100
-height = 100
+import random
+width = 50
+height = 30
 size = 20
-separation = 5
+separation = 1
 
 class Cell:
     grid = []
@@ -27,6 +27,7 @@ class Cell:
                 colors[self.x][self.y] = (255, 255, 255)
             else:
                 colors[self.x][self.y] = (0, 0, 0)
+            
         super().__setattr__(name, value)
         
     def count_neighbors(self):
@@ -85,17 +86,18 @@ def print_grid(grid):
             print(f'{el}:{el.count_neighbors()}', sep="", end="")
         print()
 
-def flip_state(cell):
+def flip_state(cell, reset=False):
     global map
     global colors
-    if cell.state == CellState.ALIVE:
+    if reset:
         cell.state = CellState.DEAD
-        colors[cell.x][cell.y] = (0, 0, 0)
-    else:
-        cell.state = CellState.ALIVE
-        colors[cell.x][cell.y] = (255, 255, 255)
+    else: 
+        if cell.state == CellState.ALIVE:
+            cell.state = CellState.DEAD
+        else:
+            cell.state = CellState.ALIVE
 
-    pygame.draw.rect(screen, colors[cell.x][cell.y], map[cell.x][cell.y])
+    pygame.draw.rect(screen, colors[cell.x][cell.y], map[cell.x][cell.y].rect)
     
 def create_grid(width, height, cell_size, separation):
     global map
@@ -117,59 +119,65 @@ def create_grid(width, height, cell_size, separation):
             x = i * (cell_size + separation)
             y = j * (cell_size + separation)
             rect = pygame.Rect(x, y, size, size)
-            map[j][i] = deepcopy(Cell(i, j, rect, CellState.DEAD))
-            if i == 1 and j in [0, 1, 2]:
-                map[j][i] = deepcopy(Cell(i, j, rect, CellState.ALIVE))
-
-    print_grid(Cell.grid)
+            map[j][i] = deepcopy(Cell(i, j, rect, CellState.ALIVE if random.random()>0.5 else CellState.DEAD))
+            pygame.draw.rect(screen, colors[j][i], map[j][i].rect)
+            
+    # print_grid(Cell.grid)
 
 def run_game():
     global map
     global colors
-
-    game_of_life = False
-    create_grid(width, height, size, separation)
-    
     running = True
-    for i in range(width):
-        for j in range(height):
-            pygame.draw.rect(screen, colors[j][i], map[j][i])
+    game_of_life = False
 
+    create_grid(width, height, size, separation)
+   
+    prev_i, prev_j = -1, -1
     while running:
-        pos = pygame.mouse.get_pos()
-        if pygame.mouse.get_just_released()[0]:
+        if pygame.mouse.get_pressed()[0]:
+            game_of_life = False
+            pos = pygame.mouse.get_pos()
             i = pos[0] // (size + separation)
             j = pos[1] // (size + separation)
-            flip_state(map[j][i])
-            print_grid(map)
-        
+            if i != prev_i or j != prev_j:
+                prev_i, prev_j = i, j
+                flip_state(map[j][i])
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                game_of_life = not game_of_life
-
+                if pygame.key.get_pressed()[pygame.K_BACKSPACE]:
+                    game_of_life = False
+                    for i in range(height):
+                        for j in range(width):
+                            flip_state(map[i][j], reset=True)
+                    print("resetting grid")
+                else: game_of_life = not game_of_life
+                
+        Cell.grid = deepcopy(map)
         if game_of_life:
-            Cell.grid = deepcopy(map)
             for row in Cell.grid:
+                if not game_of_life:
+                    break
                 for el in row:
+                    if pygame.mouse.get_pressed()[0]:
+                        game_of_life = False
+                        break
                     if el.state == CellState.ALIVE and el.count_neighbors() < 2:
                         flip_state(el)
-                        print(f"coordinates: {el.x}, {el.y} underpopulation")
                     elif el.state == CellState.ALIVE and el.count_neighbors() in [2,3]:
-                        print(f"coordinates: {el.x}, {el.y} alive")
+                        pass
                     elif el.state == CellState.ALIVE and el.count_neighbors() > 3:
                         flip_state(el)
-                        print(f"coordinates: {el.x}, {el.y} overpopulation")
                     elif el.state == CellState.DEAD and el.state == CellState.DEAD and el.count_neighbors()==3:
-                        flip_state(el)   
-                        print(f"coordinates: {el.x}, {el.y} reproduction")
-            map = deepcopy(Cell.grid)
-            time.sleep(0.1)
-            print_grid(map)
+                        flip_state(el)
 
-        delta_time = clock.tick(60) / 1000.0
-        delta_time = max(0.001, min(delta_time, 0.1))
+            map = deepcopy(Cell.grid)
+            delta_time = clock.tick(60) / 1000.0
+            delta_time = max(0.001, min(delta_time, 0.1))
+            if game_of_life:
+                time.sleep(1*delta_time)
         pygame.display.flip()
 
     pygame.quit()
