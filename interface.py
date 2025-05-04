@@ -170,7 +170,7 @@ def run_game():
                         pass
                     elif el.state == CellState.ALIVE and el.count_neighbors() > 3:
                         flip_state(el)
-                    elif el.state == CellState.DEAD and el.state == CellState.DEAD and el.count_neighbors()==3:
+                    elif el.state == CellState.DEAD and el.count_neighbors()==3:
                         flip_state(el)
 
             map = deepcopy(Cell.grid)
