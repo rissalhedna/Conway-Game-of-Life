@@ -3,8 +3,8 @@ from main import CellState
 from copy import deepcopy
 import time
 import random
-width = 3
-height = 2
+width = 10
+height = 10
 separation = 1
 cell_size = 50
 global neighbors
@@ -62,6 +62,12 @@ def update_neighbors(i, j, value):
     ):
         neighbors[i + 1][j + 1] += value
 
+def reset_grid():
+    global map
+    global neighbors
+    map = [[0]*width for _ in range(height)]
+    neighbors = [[0]*width for _ in range(height)]
+
 def flip_state(i, j, reset=False):
     global map
     global neighbors
@@ -98,7 +104,7 @@ def run_game():
             if i != prev_i or j != prev_j:
                 prev_i, prev_j = i, j
                 flip_state(i, j)
-                print_grid(map)
+                print_grid(neighbors)
         # if pygame.mouse.get_just_released()[0]:
         #     flip_state(i, j)
 
@@ -108,9 +114,7 @@ def run_game():
             if event.type == pygame.KEYDOWN:
                 if pygame.key.get_pressed()[pygame.K_BACKSPACE]:
                     game_of_life = False
-                    for i in range(height):
-                        for j in range(width):
-                            flip_state(i, j, reset=True)
+                    reset_grid()
                     print("resetting grid")
                 else: game_of_life = not game_of_life
 

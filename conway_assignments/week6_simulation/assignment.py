@@ -2,7 +2,7 @@
 
 import pygame
 import random
-import copy # Needed for evolve_grid
+import time
 pygame.init()
 
 # --- Constants --- (Reuse from Week 4/5)
@@ -17,152 +17,207 @@ BLACK = (0, 0, 0)
 GRAY = (100, 100, 100)
 FPS = 10 # Frames (generations) per second
 
-# --- Cell Class & State --- (Include count_neighbors)
-# Using 0 for DEAD, 1 for ALIVE
+# --- Cell Class & State --- (Include color property and class map)
 class Cell:
-    def __init__(self, state, rect):
+    # Static grid storage - shared by all Cell instances
+    map = [[None] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
+    
+    def __init__(self, x, y, rect, state):
+        self.color = BLACK # Default color for dead cells
+        self.neighbors = 0 # Store neighbor count
+        self.x = x
+        self.y = y
         self.state = state # 0 or 1
         self.rect = rect
+        # Store this cell in the class map
+        self.map[x][y] = self
+        
+    def __setattr__(self, name, value):
+        # Automatically update color when state changes
+        if name == "state":
+            if value == 1: # ALIVE
+                self.color = WHITE
+            else: # DEAD
+                self.color = BLACK
+            # Let the normal assignment happen after this
+        super().__setattr__(name, value)
+        
+    # Efficient neighbor counting - uses the class map directly
+    def count_neighbors(self):
+        neighbors = 0
+        # Check all 8 surrounding cells with boundary checks
+        if (
+            self.x > 0
+            and self.y > 0
+            and self.map[self.x - 1][self.y - 1].state == 1
+        ):
+            neighbors += 1
+        if self.x > 0 and self.map[self.x - 1][self.y].state == 1:
+            neighbors += 1
+        if (
+            self.x > 0
+            and self.y < GRID_WIDTH - 1
+            and self.map[self.x - 1][self.y + 1].state == 1
+        ):
+            neighbors += 1
+        if self.y > 0 and self.map[self.x][self.y - 1].state == 1:
+            neighbors += 1
+        if (
+            self.y < GRID_WIDTH - 1
+            and self.map[self.x][self.y + 1].state == 1
+        ):
+            neighbors += 1
+        if (
+            self.x < GRID_HEIGHT - 1
+            and self.y > 0
+            and self.map[self.x + 1][self.y - 1].state == 1
+        ):
+            neighbors += 1
+        if (
+            self.x < GRID_HEIGHT - 1
+            and self.map[self.x + 1][self.y].state == 1
+        ):
+            neighbors += 1
+        if (
+            self.x < GRID_HEIGHT - 1
+            and self.y < GRID_WIDTH - 1
+            and self.map[self.x + 1][self.y + 1].state == 1
+        ):
+            neighbors += 1
 
-    # 1. Integrate count_neighbors method
-    def count_neighbors(self, grid, row, col):
-        live_neighbors = 0
-        for i in range(max(0, row - 1), min(GRID_HEIGHT, row + 2)):
-            for j in range(max(0, col - 1), min(GRID_WIDTH, col + 2)):
-                if i == row and j == col:
-                    continue
-                # Check state of the neighbor cell (must exist due to bounds check)
-                if grid[i][j].state == 1: # Check if ALIVE
-                    live_neighbors += 1
-        return live_neighbors
+        return neighbors
 
 # --- Global Variables ---
-grid = [[None] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Conway's Game of Life - Week 6")
-clock = pygame.time.Clock() # 4a. Clock for FPS control
+screen = None
 
-# --- Helper Functions (Reuse from Week 5, Add evolve_grid) ---
+# --- Helper Functions ---
 def create_grid(randomize=True):
-    # (Same as Week 5)
-    for r in range(GRID_HEIGHT):
-        for c in range(GRID_WIDTH):
-            x = c * (CELL_SIZE + SEPARATION)
-            y = r * (CELL_SIZE + SEPARATION)
+    """Initialize the grid with cells."""
+    global screen
+    
+    # Set up the pygame screen
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Conway's Game of Life - Week 6")
+    
+    print("map initialized with size:", len(Cell.map), "x", len(Cell.map[0]))
+    for i in range(GRID_WIDTH):
+        for j in range(GRID_HEIGHT):
+            x = i * (CELL_SIZE + SEPARATION)
+            y = j * (CELL_SIZE + SEPARATION)
             cell_rect = pygame.Rect(x, y, CELL_SIZE, CELL_SIZE)
+            
             initial_state = 0
             if randomize:
-                initial_state = 1 if random.random() > 0.7 else 0
-            if grid[r][c]:
-                grid[r][c].state = initial_state
-                grid[r][c].rect = cell_rect # Ensure rect is updated if grid size changes
-            else:
-                grid[r][c] = Cell(initial_state, cell_rect)
+                initial_state = 1 if random.random() > 0.5 else 0
+                
+            # Always create a new cell - existing cells will be replaced in the map
+            cell = Cell(j, i, cell_rect, initial_state)
+            pygame.draw.rect(screen, cell.color, cell.rect)
+    
+    return screen
 
-def draw_grid(screen, grid):
-    # (Same as Week 5)
-    for r in range(GRID_HEIGHT):
-        for c in range(GRID_WIDTH):
-            cell = grid[r][c]
-            color = WHITE if cell.state == 1 else BLACK
-            pygame.draw.rect(screen, color, cell.rect)
+def reset_map(screen):
+    """Reset all cells to dead state."""
+    for row in Cell.map:
+        for cell in row:
+            cell.state = 0  # Set to DEAD
+            pygame.draw.rect(screen, cell.color, cell.rect)
 
-def flip_state(cell, screen):
-    # (Same as Week 5 - but redraw might be less necessary if full redraw happens)
-    cell.state = 1 - cell.state
-    # Optional: immediate redraw for responsiveness
-    # color = WHITE if cell.state == 1 else BLACK
-    # pygame.draw.rect(screen, color, cell.rect)
+def flip_state(screen, cell):
+    """Toggle the state of a cell and update its display."""
+    cell.state = 1 - cell.state  # Toggle between 0 and 1
+    # Draw the cell with its new color
+    pygame.draw.rect(screen, cell.color, cell.rect)
 
 def get_grid_coords(pixel_pos):
-    # (Same as Week 5)
+    """Convert pixel coordinates to grid coordinates."""
     pixel_x, pixel_y = pixel_pos
     col = pixel_x // (CELL_SIZE + SEPARATION)
     row = pixel_y // (CELL_SIZE + SEPARATION)
     if 0 <= row < GRID_HEIGHT and 0 <= col < GRID_WIDTH:
         return row, col
-    return None
-
-# 2. Integrate evolve_grid function
-def evolve_grid(current_grid):
-    # 2a. Create a deep copy to store the next state
-    next_grid = copy.deepcopy(current_grid)
-
-    for r in range(GRID_HEIGHT):
-        for c in range(GRID_WIDTH):
-            cell = current_grid[r][c]
-            live_neighbors = cell.count_neighbors(current_grid, r, c)
-            current_state = cell.state
-
-            # Apply Conway's Rules
-            new_state = current_state
-            if current_state == 1: # ALIVE
-                if live_neighbors < 2 or live_neighbors > 3:
-                    new_state = 0 # Dies
-            else: # DEAD
-                if live_neighbors == 3:
-                    new_state = 1 # Becomes alive
-
-            # Update the state in the *next* grid
-            next_grid[r][c].state = new_state
-
-    return next_grid
-
-# --- Initialization ---
-create_grid(randomize=True)
+    return None  # Click was outside the grid
 
 # --- Main Game Loop ---
-running = True
-simulation_active = False # Start paused
+def run_game():
+    # Initialize the game
+    running = True
+    game_of_life = False  # Start with simulation paused
+    clock = pygame.time.Clock()
+    delta_time = 0.1  # Time between generations when active
 
-while running:
-    # --- Event Handling (Reuse from Week 5) ---
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    # Create the initial grid
+    screen = create_grid(randomize=True)
+    
+    # Keep track of the previous cell to avoid rapid toggling
+    prev_i, prev_j = -1, -1
+    
+    # Main game loop
+    while running:
+        # Handle mouse input for cell toggling
+        if pygame.mouse.get_pressed()[0]:  # Left mouse button held
+            game_of_life = False  # Pause simulation when editing
+            pos = pygame.mouse.get_pos()
+            i = pos[0] // (CELL_SIZE + SEPARATION)
+            j = pos[1] // (CELL_SIZE + SEPARATION)
+            
+            # Only toggle if we moved to a different cell to prevent rapid toggling
+            if i != prev_i or j != prev_j:
+                prev_i, prev_j = i, j
+                flip_state(screen, Cell.map[j][i])
 
-        # Mouse clicks (flips state, pauses simulation)
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                mouse_pos = pygame.mouse.get_pos()
-                grid_coords = get_grid_coords(mouse_pos)
-                if grid_coords:
-                    r, c = grid_coords
-                    clicked_cell = grid[r][c]
-                    flip_state(clicked_cell, screen)
-                    simulation_active = False # Pause on click
-                    print("Cell clicked, Simulation PAUSED")
+        # Handle other events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if pygame.key.get_pressed()[pygame.K_BACKSPACE]:
+                    game_of_life = False
+                    reset_map(screen)
+                    print("resetting grid")
+                else:
+                    game_of_life = not game_of_life
+                    print(f"Simulation {'ACTIVE' if game_of_life else 'PAUSED'}")
+        
+        # Update neighbor counts for all cells before applying rules
+        for row in Cell.map:
+            for cell in row:
+                cell.neighbors = cell.count_neighbors()
+        
+        # Apply game of life rules if simulation is active
+        if game_of_life:
+            for row in Cell.map:
+                # Check if we should stop simulation (e.g., user clicked)
+                if not game_of_life:
+                    break
+                for cell in row:
+                    # Check if user clicked to stop simulation
+                    if pygame.mouse.get_pressed()[0]:
+                        game_of_life = False
+                        break
+                        
+                    # Apply Conway's Game of Life rules
+                    if cell.state == 1 and cell.neighbors < 2:  # Underpopulation
+                        flip_state(screen, cell)
+                    elif cell.state == 1 and cell.neighbors in [2, 3]:  # Survival
+                        pass
+                    elif cell.state == 1 and cell.neighbors > 3:  # Overpopulation
+                        flip_state(screen, cell)
+                    elif cell.state == 0 and cell.neighbors == 3:  # Reproduction
+                        flip_state(screen, cell)
 
-        # Keyboard input (controls simulation, reset, randomize)
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                simulation_active = not simulation_active
-                print(f"Simulation {'ACTIVE' if simulation_active else 'PAUSED'}")
-            elif event.key == pygame.K_c:
-                simulation_active = False
-                create_grid(randomize=False)
-                print("Grid cleared, Simulation PAUSED")
-            elif event.key == pygame.K_r:
-                simulation_active = False
-                create_grid(randomize=True)
-                print("Grid randomized, Simulation PAUSED")
+            # Control simulation speed
+            delta_time = clock.tick(FPS) / 1000.0
+            delta_time = max(0.001, min(delta_time, 0.1))
+            if game_of_life:
+                time.sleep(delta_time)
+                
+        # Update the display
+        pygame.display.flip()
 
-    # --- Game Logic Step ---
-    # 3. Run simulation step if active
-    if simulation_active:
-        grid = evolve_grid(grid)
+    # Cleanup when done
+    pygame.quit()
 
-    # --- Drawing --- (Always redraw the full grid)
-    # 5. Drawing Updates
-    screen.fill(GRAY) # Clear screen with background color
-    draw_grid(screen, grid) # Draw the current state of all cells
-
-    # --- Update Display ---
-    pygame.display.flip()
-
-    # 4b. Control Speed
-    clock.tick(FPS) # Limit loop speed
-
-# --- Cleanup ---
-pygame.quit()
-print("Pygame window closed.") 
+# Start the game
+if __name__ == "__main__":
+    run_game() 

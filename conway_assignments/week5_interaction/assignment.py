@@ -23,14 +23,34 @@ GRAY = (100, 100, 100)
 #     ALIVE = 1
 
 class Cell:
+    # Optional: Add a class attribute 'map' to store the grid (will implement in Week 6)
+    # map = [[None] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
+    
     def __init__(self, state, rect):
         self.state = state # 0 or 1
         self.rect = rect
+        self.color = BLACK # Add color as an instance variable
+        # Update color based on initial state
+        if state == 1:
+            self.color = WHITE
+        
+        # Optional: Add x, y coordinates and store in class map (will implement in Week 6)
+        # self.x = x
+        # self.y = y
+        # self.map[x][y] = self
 
     # --- Add methods needed for Week 6 --- #
     # def count_neighbors(self, grid, row, col):
     #    # ... (logic from Week 3, adapted for 0/1 states)
     #    pass
+    
+    # Optional: Consider adding __setattr__ method to automatically update color
+    # when state changes (will implement in Week 6)
+    # def __setattr__(self, name, value):
+    #     if name == "state":
+    #         # Set color based on new state
+    #         pass
+    #     super().__setattr__(name, value)
 
 # --- Global Variables ---
 grid = [[None] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
@@ -52,6 +72,8 @@ def create_grid(randomize=True):
             # If cell exists, update state, else create new
             if grid[r][c]:
                 grid[r][c].state = initial_state
+                # Update color based on state
+                grid[r][c].color = WHITE if initial_state == 1 else BLACK
             else:
                 grid[r][c] = Cell(initial_state, cell_rect)
 
@@ -60,16 +82,17 @@ def draw_grid(screen, grid):
     for r in range(GRID_HEIGHT):
         for c in range(GRID_WIDTH):
             cell = grid[r][c]
-            color = WHITE if cell.state == 1 else BLACK
-            pygame.draw.rect(screen, color, cell.rect)
+            # Use the cell's color attribute instead of calculating it
+            pygame.draw.rect(screen, cell.color, cell.rect)
 
 # 1e. Flip State Function
 def flip_state(cell, screen):
     """Flips the state of a cell and redraws it immediately."""
     cell.state = 1 - cell.state # Toggle between 0 and 1
+    # Update color based on new state
+    cell.color = WHITE if cell.state == 1 else BLACK
     # Immediate redraw
-    color = WHITE if cell.state == 1 else BLACK
-    pygame.draw.rect(screen, color, cell.rect)
+    pygame.draw.rect(screen, cell.color, cell.rect)
     # Need pygame.display.flip() later in the main loop for this to show
 
 # 1c. Coordinate Conversion
@@ -89,6 +112,7 @@ create_grid(randomize=True) # Initial random grid
 # --- Main Game Loop ---
 running = True
 simulation_active = False # 2c. Pause/Start state
+prev_i, prev_j = -1, -1 # Track previous cell to prevent rapid toggling
 
 while running:
     # --- Event Handling ---
@@ -109,24 +133,37 @@ while running:
                     clicked_cell = grid[r][c]
                     # 1e. Flip State
                     flip_state(clicked_cell, screen)
-                    # Note: Consider the dragging issue mentioned in README
+                    # Update previous cell position
+                    prev_i, prev_j = c, r
 
-        # 2. Keyboard Input
-        if event.type == pygame.KEYDOWN:
-            # 2c. Pause/Start Simulation
-            if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                simulation_active = not simulation_active
-                print(f"Simulation {'ACTIVE' if simulation_active else 'PAUSED'}")
-            # 2d. Clear Grid
-            elif event.key == pygame.K_c:
-                simulation_active = False # Stop simulation when clearing
-                create_grid(randomize=False) # Fill with dead cells
-                print("Grid cleared.")
-            # 2e. Randomize Grid
-            elif event.key == pygame.K_r:
-                simulation_active = False # Stop simulation when randomizing
-                create_grid(randomize=True)
-                print("Grid randomized.")
+    # Handle continuous mouse input (dragging)
+    if pygame.mouse.get_pressed()[0]:  # Left mouse button held
+        pos = pygame.mouse.get_pos()
+        i = pos[0] // (CELL_SIZE + SEPARATION)
+        j = pos[1] // (CELL_SIZE + SEPARATION)
+        # Only toggle if we moved to a different cell
+        if (i != prev_i or j != prev_j) and 0 <= j < GRID_HEIGHT and 0 <= i < GRID_WIDTH:
+            prev_i, prev_j = i, j
+            flip_state(grid[j][i], screen)
+
+    # Handle keyboard events
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_SPACE]:
+        simulation_active = not simulation_active
+        print(f"Simulation {'ACTIVE' if simulation_active else 'PAUSED'}")
+    elif keys[pygame.K_BACKSPACE]:
+        simulation_active = False # Stop simulation when clearing
+        for r in range(GRID_HEIGHT):
+            for c in range(GRID_WIDTH):
+                if grid[r][c].state == 1:  # Only reset living cells
+                    grid[r][c].state = 0
+                    grid[r][c].color = BLACK
+                    pygame.draw.rect(screen, grid[r][c].color, grid[r][c].rect)
+        print("Grid cleared.")
+    elif keys[pygame.K_r]:
+        simulation_active = False # Stop simulation when randomizing
+        create_grid(randomize=True)
+        print("Grid randomized.")
 
     # --- Game Logic (Week 6) ---
     # if simulation_active:

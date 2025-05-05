@@ -24,25 +24,27 @@ BLACK = (0, 0, 0)
 GRAY = (100, 100, 100) # For grid lines or background
 
 # --- Adapt Cell Class --- (Include state and rect)
-# Reuse CellState Enum if you have it
-# from enum import Enum
-# class CellState(Enum):
-#     DEAD = 0 # Or False
-#     ALIVE = 1 # Or True
+# Using 0 for DEAD, 1 for ALIVE
 
 class Cell:
     def __init__(self, state, rect):
-        self.state = state # e.g., CellState.ALIVE or CellState.DEAD
-        # 5. Store the Pygame Rect object
+        self.state = state # 0 for dead, 1 for alive
+        # 5. Store the Pygame Rect object for drawing
         self.rect = rect
+        
+        # Note for Week 5: We'll add a color attribute here 
+        # to store the cell's color instead of calculating it each time
 
     # We don't need __str__ for Pygame visualization
-    # Optional: Keep it if you want to debug by printing
+    # But it could be useful for debugging
+    def __str__(self):
+        return str(self.state)
 
 # --- Grid Creation --- (Now includes Rect creation)
 grid = [[None] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
 
 def create_grid():
+    """Initialize the grid with Cell objects"""
     for r in range(GRID_HEIGHT):
         for c in range(GRID_WIDTH):
             # Calculate screen position for the cell
@@ -51,21 +53,23 @@ def create_grid():
             # Create the pygame.Rect for this cell
             cell_rect = pygame.Rect(x, y, CELL_SIZE, CELL_SIZE)
             # Decide initial state (e.g., random)
-            # initial_state = CellState.ALIVE if random.random() > 0.7 else CellState.DEAD
-            initial_state = 1 if random.random() > 0.7 else 0 # Using 1/0 for state
+            # Use 70% dead cells, 30% alive cells for a good starting pattern
+            initial_state = 1 if random.random() > 0.7 else 0
 
-            # Create the Cell object
+            # Create the Cell object and store in grid
             grid[r][c] = Cell(initial_state, cell_rect)
 
 # --- Drawing --- (Replaces print_grid)
 # 5. Grid Drawing Function
 def draw_grid(screen, grid):
+    """Draw all cells in the grid"""
     for r in range(GRID_HEIGHT):
         for c in range(GRID_WIDTH):
             cell = grid[r][c]
             # Choose color based on state
-            color = WHITE if cell.state == 1 else BLACK # Adapt if using Enum
-            # Draw the cell's rectangle
+            # In Week 5, this will be moved into the Cell class
+            color = WHITE if cell.state == 1 else BLACK
+            # Draw the cell's rectangle with the appropriate color
             pygame.draw.rect(screen, color, cell.rect)
 
 # --- Pygame Setup ---
@@ -90,6 +94,9 @@ while running:
 
     # 6c. Update Display
     pygame.display.flip()
+    
+    # Set frame rate (optional)
+    pygame.time.Clock().tick(60)
 
 # 7. Quit Pygame
 pygame.quit()
