@@ -3,9 +3,9 @@ from main import CellState
 from copy import deepcopy
 import time
 import random
-width = 20
-height = 20
-size = 40
+width = 50
+height = 30
+size = 20
 separation = 1
 
 class Cell:
