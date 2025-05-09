@@ -1,6 +1,5 @@
 import pygame
 from main import CellState
-from copy import deepcopy
 import time
 import random
 width = 50
@@ -163,7 +162,7 @@ def run_game():
                     elif el.state == CellState.ALIVE and el.neighbors > 3:
                         flip_state(screen, el)
                     elif el.state == CellState.DEAD and el.neighbors==3:
-                        flip_state(screen, el)
+                          flip_state(screen, el)
 
             delta_time = clock.tick(60) / 1000.0
             delta_time = max(0.001, min(delta_time, 0.1))
@@ -174,4 +173,5 @@ def run_game():
     pygame.quit()
 
 # create_grid(3, 2, size, separation)
-run_game()
+if __name__ == "__main__":
+    run_game()
